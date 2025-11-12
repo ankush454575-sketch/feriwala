@@ -1,0 +1,13 @@
+﻿# Ignore node modules and common local files
+node_modules/
+client/node_modules/
+server/node_modules/
+*.pem
+*.env
+.DS_Store
+.vscode/
+.gemini/
+dist/
+build/
+npm-debug.log
+yarn-error.log
