@@ -1,40 +1,48 @@
 import { Request, Response } from 'express';
 import User from '../models/User';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import asyncHandler from '../utils/asyncHandler';
+import ApiError from '../utils/ApiError';
 
-export const register = async (req: Request, res: Response) => {
-  try {
-    const { name, email, password } = req.body;
+export const register = asyncHandler(async (req: Request, res: Response) => {
+  const { name, email, password } = req.body;
 
-    const existingUser = await User.findOne({ email });
+  const existingUser = await User.findOne({ email });
 
-    if (existingUser) {
-      return res.status(400).json({ message: 'User already exists' });
-    }
-
-    // Hash password and save user
-    // Send verification email
-
-    res.status(201).json({ message: 'User created successfully' });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error' });
+  if (existingUser) {
+    throw new ApiError(400, 'User already exists');
   }
-};
 
-export const login = async (req: Request, res: Response) => {
-  try {
-    const { email, password } = req.body;
+  const hashedPassword = await bcrypt.hash(password, 10);
 
-    const user = await User.findOne({ email });
+  const newUser = new User({
+    name,
+    email,
+    password: hashedPassword,
+  });
 
-    if (!user) {
-      return res.status(400).json({ message: 'Invalid credentials' });
-    }
+  await newUser.save();
 
-    // Check password
-    // Generate JWT
+  res.status(201).json({ message: 'User created successfully' });
+});
 
-    res.status(200).json({ message: 'Login successful' });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error' });
+export const login = asyncHandler(async (req: Request, res: Response) => {
+  const { email, password } = req.body;
+
+  const user = await User.findOne({ email });
+
+  if (!user) {
+    throw new ApiError(400, 'Invalid credentials');
   }
-};
+
+  const isMatch = await bcrypt.compare(password, user.password);
+
+  if (!isMatch) {
+    throw new ApiError(400, 'Invalid credentials');
+  }
+
+  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET as string, { expiresIn: '1h' });
+
+  res.status(200).json({ message: 'Login successful', token });
+});

@@ -1,54 +1,64 @@
-#!/bin/bash
+# deploy-v4.ps1
 
-set -e
+# This script is a PowerShell equivalent of deploy-v4.sh
 
-echo "=== Feriwala Deployment Script v4 (Final) ==="
+# Stop on error
+$ErrorActionPreference = "Stop"
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+Write-Host "=== Feriwala Deployment Script v4 (Final) ===" -ForegroundColor Green
+
+# Colors for output (PowerShell equivalent)
+$RED = "`e[0;31m"
+$GREEN = "`e[0;32m"
+$YELLOW = "`e[1;33m"
+$NC = "`e[0m" # No Color
 
 # Configuration
-DEPLOY_USER="ubuntu"
-DEPLOY_HOST="13.127.193.200"
-DEPLOY_KEY="LightsailDefaultKey-ap-south-1.pem"
-DEPLOY_PATH="/home/ubuntu/feriwala"
-TAR_FILE="deploy.tar.gz"
+$DEPLOY_USER = "ubuntu"
+$DEPLOY_HOST = "13.127.193.200"
+$DEPLOY_KEY = "LightsailDefaultKey-ap-south-1.pem"
+$DEPLOY_PATH = "/home/ubuntu/feriwala"
+$TAR_FILE = "deploy.tar.gz"
 
 # Step 1: Build client
-echo -e "${YELLOW}[STEP 1] Building the client...${NC}"
-cd client
+Write-Host "$($YELLOW)[STEP 1] Building the client...$($NC)"
+Set-Location client
 npm install
 npm run build
-cd ..
+Set-Location ..
 
 # Step 2: Build server
-echo -e "${YELLOW}[STEP 2] Building the server...${NC}"
-cd server
+Write-Host "$($YELLOW)[STEP 2] Building the server...$($NC)"
+Set-Location server
 npm install
 npm run build
-cd ..
+Set-Location ..
 
 # Step 3: Create deployment package (WITHOUT node_modules to rebuild on server)
-echo -e "${YELLOW}[STEP 3] Packaging the application...${NC}"
-rm -f $TAR_FILE
-tar --exclude=node_modules --exclude=.env --exclude=dist -czf $TAR_FILE \
-  client/dist \
-  server/dist \
-  server/package.json \
+Write-Host "$($YELLOW)[STEP 3] Packaging the application...$($NC)"
+Remove-Item $TAR_FILE -ErrorAction SilentlyContinue
+# tar command equivalent in PowerShell is more complex.
+# For now, we'll assume tar.exe is available in the PATH or use a workaround.
+# This part needs careful translation.
+# For now, I'll use the tar.exe if available, otherwise, this will fail.
+# A more robust solution would be to use a .NET compression library or a PowerShell module.
+# Given the environment is MINGW64, tar.exe might be available.
+tar --exclude=node_modules --exclude=.env --exclude=dist -czf $TAR_FILE `
+  client/dist `
+  server/dist `
+  server/package.json `
   server/package-lock.json
 
 # Step 4: Upload to server
-echo -e "${YELLOW}[STEP 4] Uploading to Lightsail...${NC}"
+Write-Host "$($YELLOW)[STEP 4] Uploading to Lightsail...$($NC)"
+# scp command equivalent in PowerShell
+# This assumes scp.exe is available in the PATH.
 scp -i "$DEPLOY_KEY" -o "StrictHostKeyChecking=no" "$TAR_FILE" "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/"
 
 # Step 5: Remote deployment with proper Node.js setup and rebuild
-echo -e "${YELLOW}[STEP 5] Connecting to Lightsail and deploying...${NC}"
+Write-Host "$($YELLOW)[STEP 5] Connecting to Lightsail and deploying...$($NC)"
 
-ssh -i "$DEPLOY_KEY" -o "StrictHostKeyChecking=no" "$DEPLOY_USER@$DEPLOY_HOST" << 'REMOTE_SCRIPT'
-
+$remoteScript = @"
 set -e
 
 DEPLOY_PATH="/home/ubuntu/feriwala"
@@ -207,13 +217,15 @@ echo "Useful commands:"
 echo "  View logs: pm2 logs feriwala-server"
 echo "  Restart: pm2 restart feriwala-server"
 echo "  Status: pm2 status"
+"@
 
-REMOTE_SCRIPT
+# Execute the remote script via SSH
+ssh -i "$DEPLOY_KEY" -o "StrictHostKeyChecking=no" "$DEPLOY_USER@$DEPLOY_HOST" "$remoteScript"
 
-echo -e "${GREEN}[SUCCESS] Deployment completed!${NC}"
-echo "Your application should now be running at: http://13.127.193.200"
-echo ""
-echo "Next steps:"
-echo "  - Test the application: curl http://13.127.193.200"
-echo "  - View logs: ssh -i \"$DEPLOY_KEY\" $DEPLOY_USER@$DEPLOY_HOST \"pm2 logs feriwala-server\""
-echo "  - Restart app: ssh -i \"$DEPLOY_KEY\" $DEPLOY_USER@$DEPLOY_HOST \"pm2 restart feriwala-server\""
+Write-Host "$($GREEN)[SUCCESS] Deployment completed!$($NC)"
+Write-Host "Your application should now be running at: http://13.127.193.200"
+Write-Host ""
+Write-Host "Next steps:"
+Write-Host "  - Test the application: curl http://13.127.193.200"
+Write-Host "  - View logs: ssh -i `"$DEPLOY_KEY`" $DEPLOY_USER@$DEPLOY_HOST `"`"pm2 logs feriwala-server`"`""
+Write-Host "  - Restart app: ssh -i `"$DEPLOY_KEY`" $DEPLOY_USER@$DEPLOY_HOST `"`"pm2 restart feriwala-server`"`""

@@ -13,8 +13,13 @@ const userSchema = new Schema({
   password: {
     type: String,
     required: true,
+    select: false,
   },
   isVerified: {
+    type: Boolean,
+    default: false,
+  },
+  isAdmin: {
     type: Boolean,
     default: false,
   },
